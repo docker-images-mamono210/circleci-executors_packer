@@ -45,6 +45,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: yaml-lint
-        uses: ibiqlik/action-yamllint@665205c
+        uses: ibiqlik/action-yamllint@665205c3255fcf157ef8dc9a40d527fe025a4bc8
         with:
           config_file: .yamllint
