@@ -3,20 +3,6 @@ name: build
 on: [deployment, push]
 
 jobs:
-  docker-hub:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Register docker image
-        uses: docker/build-push-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: tomonorimatsumura/packer
-          tags: latest
-
   github-container-registory:
     runs-on: ubuntu-latest
     steps:
@@ -29,7 +15,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.CR_PAT}}
           registry: ghcr.io
-          repository: docker-hub-tm/circleci-executors_packer/packer
+          repository: docker-images-mamono210/circleci-executors/packer
           dockerfile: Dockerfile
           tags: latest
 
