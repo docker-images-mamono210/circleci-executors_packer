@@ -1,0 +1,104 @@
+---
+version: 2.1
+
+executors:
+  docker:
+    docker:
+      - image: cimg/base:2022.09
+  detect-secrets:
+    docker:
+      - image: cimg/python:3.11
+    resource_class: small
+  trailing-whitespace:
+    docker:
+      - image: ghcr.io/docker-images-mamono210/circleci-executors/trailing-whitespace:latest
+    resource_class: small
+
+orbs:
+  yamllint: orbss/yamllint@0.0.4
+
+jobs:
+  detect-secrets:
+    executor: detect-secrets
+    steps:
+      - checkout
+      - run:
+          name: Install detect-secrets
+          command: |
+            pip install detect-secrets jq
+      - run:
+          name: Run detect-secrets scan
+          command: |
+            detect-secrets scan --disable-plugin KeywordDetector \
+            | jq .results > results.json
+      - run:
+          name: Check for vulnerabilities
+          command: |
+            if [ "$(cat results.json | wc -w)" -gt 2 ]; then
+              echo "vulnerability was found"
+              detect-secrets scan | jq .results -C
+              exit 1
+            fi
+      - run:
+          name: Show detect-secrets version
+          command: |
+            pip list | grep detect-secrets \
+            | GREP_COLORS='mt=01;34' egrep --color=always '[[:digit:]]' \
+            | GREP_COLORS='mt=01;34' egrep --color=always '\.' \
+            | GREP_COLORS='mt=01;33' egrep --color=always 'detect-secrets.* '
+
+  docker-build-and-push:
+    executor: docker
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Login to GitHub Container Registry
+          command: |
+            echo "${CR_PAT}" | docker login ghcr.io -u "${CIRCLE_PROJECT_USERNAME}" --password-stdin
+      - run:
+          name: Build and tag image
+          command: |
+            docker build -t packer:tmp .
+            tag=$(docker run --rm packer:tmp packer --version | awk 'NR==1 {print $2}')
+            echo "export PACKER_TAG=$tag" >> $BASH_ENV
+      - run:
+          name: Push image with version tag
+          command: |
+            source $BASH_ENV
+            docker tag packer:tmp ghcr.io/docker-images-mamono210/circleci-executors/packer:$PACKER_TAG
+            docker push ghcr.io/docker-images-mamono210/circleci-executors/packer:$PACKER_TAG
+      - run:
+          name: Push image with latest tag
+          command: |
+            docker tag packer:tmp ghcr.io/docker-images-mamono210/circleci-executors/packer:latest
+            docker push ghcr.io/docker-images-mamono210/circleci-executors/packer:latest
+  yamllint:
+    executor: yamllint/default
+    steps:
+      - checkout
+      - yamllint/execute
+  trailing-whitespace:
+    executor: trailing-whitespace
+    steps:
+      - checkout
+      - run:
+          name: Execute trailing-whitespace
+          command: trailing-whitespace
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - trailing-whitespace
+      - yamllint:
+          requires:
+            - trailing-whitespace
+      - detect-secrets:
+          requires:
+            - yamllint
+      - docker-build-and-push:
+          context: ghcr
+          requires:
+            - detect-secrets

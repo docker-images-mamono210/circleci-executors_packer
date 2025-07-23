@@ -1,1 +1,1 @@
-[![](https://github.com/docker-hub-tm/circleci-executors_packer/workflows/build/badge.svg)](https://github.com/docker-hub-tm/circleci-executors_packer/actions?query=workflow%3Abuild)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/docker-images-mamono210/circleci-executors_packer/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/docker-images-mamono210/circleci-executors_packer/tree/main)
